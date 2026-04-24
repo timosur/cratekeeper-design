@@ -1,0 +1,36 @@
+{
+  "colors": {
+    "primary": "sky",
+    "secondary": "emerald",
+    "neutral": "neutral"
+  },
+  "typography": {
+    "heading": "Inter",
+    "body": "Inter",
+    "mono": "JetBrains Mono"
+  },
+  "personality": {
+    "adjectives": ["precise", "calm", "trustworthy", "technical", "minimal"],
+    "mood": "A focused engineering workbench — quiet, deliberate, and deeply respectful of the user's library. The interface retreats so the work can take center stage."
+  },
+  "voice": {
+    "tone": "Direct, technical, and reassuring. Speaks like a competent operator's tool: short labels, clear verbs, no marketing fluff.",
+    "characteristics": [
+      "Uses precise nouns from the domain (track, ISRC, bucket, checkpoint, build)",
+      "Surfaces consequences before destructive actions and never sugarcoats them",
+      "Prefers status verbs over adjectives ('matched', 'stale', 'queued')"
+    ],
+    "writingStyle": "Sentence case, minimal punctuation, no exclamations. Numbers and identifiers are first-class — show counts, durations, and IDs in monospace."
+  },
+  "uiStyle": {
+    "borderRadius": "rounded-md",
+    "shadows": "subtle",
+    "density": "compact"
+  },
+  "logo": {
+    "primaryFile": null,
+    "usageNotes": null
+  },
+  "resources": [],
+  "generatedAt": "2026-04-24"
+}
