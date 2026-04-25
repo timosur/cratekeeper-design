@@ -33,6 +33,9 @@ export default function EventDetailPreview() {
         navigator.clipboard?.writeText(urls.join("\n"));
         console.log(`exported ${urls.length} tidal URLs to clipboard`);
       }}
+      onPromoteToLibrary={(trackId, next) =>
+        console.log(next ? "promote to library:" : "remove from library:", trackId)
+      }
       onOpenSyncedPlaylist={(svc, url) => console.log("open synced", svc, url)}
       onViewAllActivity={() => console.log("view all activity")}
     />

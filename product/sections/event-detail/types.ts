@@ -149,6 +149,8 @@ export interface MatchedTrack {
   matchKind: MatchKind;
   spotifyUrl: string;
   tidalUrl: string;
+  /** True when this track has been promoted into the curated Master Library. */
+  promotedToLibrary: boolean;
 }
 
 export interface MissedTrack {
@@ -269,6 +271,8 @@ export interface EventDetailProps {
   onOpenSpotify?: (url: string) => void;
   /** Called when the user opens a track on Tidal */
   onOpenTidal?: (url: string) => void;
+  /** Called when the user toggles a matched track's promotion to the curated Master Library. `next` is the new state. */
+  onPromoteToLibrary?: (trackId: string, next: boolean) => void;
   /** Called when the user bulk-exports all missing tracks as Tidal purchase URLs (clipboard / .txt download) */
   onExportMissesTidalUrls?: (urls: string[]) => void;
   /** Called when the user opens a synced Spotify or Tidal playlist URL */

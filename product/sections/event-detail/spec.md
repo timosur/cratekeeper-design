@@ -56,7 +56,7 @@ The right panel swaps wholesale to a focused view per step. All step panels shar
 - **Fetch / Enrich / Scan:** simple Run button + last-result summary (track count, source URL, MusicBrainz lookups).
 - **Classify:** distribution chart of tracks per genre bucket with counts.
 - **Review:** filterable table of low-confidence tracks (confidence < threshold) with checkbox selection and a "Re-bucket selected → [bucket dropdown]" bulk action.
-- **Match:** a "Matched" tab (table of resolved local files with ISRC source) and a "Misses" tab (table with one-click copy of generated Tidal purchase URLs).
+- **Match:** a "Matched" tab (table of resolved local files with ISRC source) and a "Misses" tab (table with one-click copy of generated Tidal purchase URLs). Each matched row has a leading **promote-to-library star** — operators star tracks they want to keep as permanent masterpieces in the curated Master Library. Filled gold star = already promoted; outline star = not yet. Toggling fires `onPromoteToLibrary(trackId, next)`. The star never deletes the file; it only adds/removes the track from the curated collection.
 - **Analyze Mood:** per-track checkpoint table; running rows pulse; failed rows show a re-try affordance.
 - **Classify Tags:** pre-flight cost panel showing estimated input/output tokens and dollar estimate (using current Anthropic pricing from settings); live token usage tile during the run; `Run estimate` and `Dispatch` are two separate actions.
 - **Apply Tags:** `Dry-run` and `Apply` actions side by side; dry-run shows a per-file diff of tag changes. After a real Apply, an `Undo` button appears with a confirmation modal.

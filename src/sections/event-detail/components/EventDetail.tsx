@@ -24,6 +24,7 @@ import {
   Download,
   CheckCheck,
   CircleDashed,
+  Star,
 } from "lucide-react";
 import type {
   EventDetailProps,
@@ -69,6 +70,7 @@ export function EventDetail({
   onOpenSpotify,
   onOpenTidal,
   onExportMissesTidalUrls,
+  onPromoteToLibrary,
   onOpenSyncedPlaylist,
   onViewAllActivity,
 }: EventDetailProps) {
@@ -114,6 +116,7 @@ export function EventDetail({
             onOpenSpotify={onOpenSpotify}
             onOpenTidal={onOpenTidal}
             onExportMissesTidalUrls={onExportMissesTidalUrls}
+            onPromoteToLibrary={onPromoteToLibrary}
             onOpenSyncedPlaylist={onOpenSyncedPlaylist}
           />
 
@@ -439,6 +442,7 @@ interface StepPanelProps {
   onOpenSpotify?: (url: string) => void;
   onOpenTidal?: (url: string) => void;
   onExportMissesTidalUrls?: (urls: string[]) => void;
+  onPromoteToLibrary?: (trackId: string, next: boolean) => void;
   onOpenSyncedPlaylist?: (service: "spotify" | "tidal", url: string) => void;
 }
 
@@ -652,6 +656,7 @@ function renderStepBody(
           onOpenSpotify={props.onOpenSpotify}
           onOpenTidal={props.onOpenTidal}
           onExportMissesTidalUrls={props.onExportMissesTidalUrls}
+          onPromoteToLibrary={props.onPromoteToLibrary}
         />
       );
     case "analyze-mood":
@@ -826,6 +831,7 @@ function MatchBody({
   onOpenSpotify,
   onOpenTidal,
   onExportMissesTidalUrls,
+  onPromoteToLibrary,
 }: {
   matched: MatchedTrack[];
   misses: MissedTrack[];
@@ -834,10 +840,12 @@ function MatchBody({
   onOpenSpotify?: (url: string) => void;
   onOpenTidal?: (url: string) => void;
   onExportMissesTidalUrls?: (urls: string[]) => void;
+  onPromoteToLibrary?: (trackId: string, next: boolean) => void;
 }) {
   const [tab, setTab] = useState<"matched" | "misses">("matched");
   const total = matched.length + misses.length;
   const coverage = total ? Math.round((matched.length / total) * 100) : 0;
+  const promotedCount = matched.filter((m) => m.promotedToLibrary).length;
 
   return (
     <div>
@@ -860,6 +868,16 @@ function MatchBody({
               {misses.length}
             </span>{" "}
             <span className="text-neutral-600 dark:text-neutral-400">missing locally</span>
+          </span>
+        </div>
+        <span className="text-neutral-300 dark:text-neutral-700">{"\u2022"}</span>
+        <div className="flex items-center gap-2">
+          <Star className="h-4 w-4 fill-amber-400 text-amber-400" strokeWidth={2.25} />
+          <span className="text-sm">
+            <span className="font-semibold text-neutral-900 dark:text-neutral-100" style={mono}>
+              {promotedCount}
+            </span>{" "}
+            <span className="text-neutral-600 dark:text-neutral-400">promoted to library</span>
           </span>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -904,6 +922,7 @@ function MatchBody({
           <table className="w-full text-xs">
             <thead className="bg-neutral-50 text-left text-[10px] uppercase tracking-wider text-neutral-500 dark:bg-neutral-950 dark:text-neutral-500">
               <tr>
+                <th className="w-10 px-2 py-2 text-center" title="Promote to Master Library">{"\u2605"}</th>
                 <th className="w-24 px-3 py-2">Library</th>
                 <th className="px-3 py-2">{"Artist \u2014 Title"}</th>
                 <th className="px-3 py-2">ISRC</th>
@@ -915,6 +934,34 @@ function MatchBody({
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {matched.map((m) => (
                 <tr key={m.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
+                  <td className="px-2 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onPromoteToLibrary?.(m.id, !m.promotedToLibrary)}
+                      title={
+                        m.promotedToLibrary
+                          ? "Remove from Master Library (file is preserved)"
+                          : "Promote to Master Library"
+                      }
+                      aria-label={
+                        m.promotedToLibrary ? "Remove from Master Library" : "Promote to Master Library"
+                      }
+                      className={
+                        m.promotedToLibrary
+                          ? "inline-flex h-7 w-7 items-center justify-center rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                          : "inline-flex h-7 w-7 items-center justify-center rounded text-neutral-300 hover:bg-amber-50 hover:text-amber-500 dark:text-neutral-700 dark:hover:bg-amber-950/30 dark:hover:text-amber-400"
+                      }
+                    >
+                      <Star
+                        className={
+                          m.promotedToLibrary
+                            ? "h-4 w-4 fill-current"
+                            : "h-4 w-4"
+                        }
+                        strokeWidth={2}
+                      />
+                    </button>
+                  </td>
                   <td className="px-3 py-2">
                     <LibraryBadge present />
                   </td>

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { ProductPage } from '@/components/ProductPage'
 import { DataShapePage } from '@/components/DataShapePage'
@@ -8,6 +9,8 @@ import { ScreenDesignPage, ScreenDesignFullscreen } from '@/components/ScreenDes
 import { ShellDesignPage, ShellDesignFullscreen } from '@/components/ShellDesignPage'
 import { ClickdummyPage } from '@/components/ClickdummyPage'
 import { ExportPage } from '@/components/ExportPage'
+
+const ClickdummyApp = lazy(() => import('@/clickdummy/ClickdummyApp'))
 
 export const router = createBrowserRouter([
   {
@@ -49,6 +52,14 @@ export const router = createBrowserRouter([
   {
     path: '/clickdummy',
     element: <ClickdummyPage />,
+  },
+  {
+    path: '/clickdummy/preview',
+    element: (
+      <Suspense fallback={null}>
+        <ClickdummyApp />
+      </Suspense>
+    ),
   },
   {
     path: '/export',
