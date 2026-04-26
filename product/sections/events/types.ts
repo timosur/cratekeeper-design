@@ -11,8 +11,6 @@ export interface TrackCounts {
   matched: number;
   /** Tracks with tags written to disk */
   tagged: number;
-  /** Tracks pushed to Spotify and Tidal sub-playlists */
-  synced: number;
 }
 
 export interface ActiveJob {
@@ -42,7 +40,7 @@ export interface EventCard {
   currentStepIndex: number;
   /** Display label for the current step */
   currentStepLabel: string;
-  /** Total number of pipeline steps (typically 12) */
+  /** Total number of pipeline steps (typically 11) */
   totalSteps: number;
   trackCounts: TrackCounts;
   /** The currently running, queued, or recently failed job for this event */

@@ -28,7 +28,6 @@ export interface AuditTarget {
  *   library.*   — Master Library mutations (promote, demote, add, remove)
  *   settings.*  — configuration changes (api-key.update, bucket.add, etc.)
  *   gate.*      — quality-gate overrides
- *   sync.*      — Spotify / Tidal playlist sync outcomes
  */
 export type AuditAction = string;
 

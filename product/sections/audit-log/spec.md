@@ -17,7 +17,7 @@ The Audit Log is the operator's investigation surface — a filterable, append-o
 - **Sticky filter bar** below the header containing, in order:
   - **Time range** segmented control: `1h` / `24h` / `7d` / `30d` / `Custom…` (custom opens a date-range popover).
   - **Actor** dropdown: `Anyone` / `Operator` / `System` / individual operator names from the dataset.
-  - **Action type** multi-select chip popover, grouped by namespace: `job.*`, `review.*`, `library.*`, `settings.*`, `gate.*`, `sync.*`. Selected chips show inline below the bar with × to remove.
+  - **Action type** multi-select chip popover, grouped by namespace: `job.*`, `review.*`, `library.*`, `settings.*`, `gate.*`. Selected chips show inline below the bar with × to remove.
   - **Target kind** chip group: `Event` / `Track` / `Library` / `Settings` / `Job` (toggles, multi-select).
   - **Target ID** monospaced input with placeholder `Paste id (evt-… / trk-… / job-…)` and a small `×` clear button.
   - **Severity** chip group: `Info` / `Warning` / `Error` / `Override` with matching colored dots (neutral / amber / red / sky).

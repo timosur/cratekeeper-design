@@ -11,8 +11,7 @@ import {
  * built-in icon vocabulary.
  */
 const ICON_BY_SECTION_ID: Record<string, NavigationItem["icon"]> = {
-  dashboard: "dashboard",
-  "event-detail": "event",
+  events: "event",
   settings: "settings",
   "master-library": "library",
   "audit-log": "audit",
@@ -82,6 +81,18 @@ export default function ClickdummyApp() {
     },
     [sections],
   );
+
+  // Allow any screen design (e.g. an event card on the Events dashboard) to
+  // request navigation to another section — including sections like
+  // `event-detail` that are intentionally not in the top-level nav.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ sectionId?: string }>).detail;
+      if (detail?.sectionId) setActiveSectionId(detail.sectionId);
+    };
+    window.addEventListener("cratekeeper:navigate", handler);
+    return () => window.removeEventListener("cratekeeper:navigate", handler);
+  }, []);
 
   const ActiveComponent = useMemo(() => {
     if (!activeSectionId) return null;

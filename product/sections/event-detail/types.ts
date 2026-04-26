@@ -12,7 +12,7 @@ export type StepPhase =
   | "Library"
   | "Analysis"
   | "Tagging"
-  | "Build & Sync";
+  | "Build";
 
 export type StepId =
   | "fetch"
@@ -25,14 +25,21 @@ export type StepId =
   | "classify-tags"
   | "apply-tags"
   | "build-event"
-  | "build-library"
-  | "sync";
+  | "build-library";
 
 export interface TrackCounts {
   total: number;
   matched: number;
+  /** Count of matched tracks that resolved to a Master Library file (subset of `matched`). */
+  fromLibrary: number;
   tagged: number;
-  synced: number;
+}
+
+export interface MissingMasterpieces {
+  /** Number of matched tracks whose Master Library file is currently missing on disk. */
+  count: number;
+  /** Track ids of the broken-masterpiece rows in the Match panel. */
+  trackIds: string[];
 }
 
 export interface ActiveJob {
@@ -112,9 +119,11 @@ export interface EventDetail {
   trackCounts: TrackCounts;
   qualityGate: QualityGate;
   staleBuilds: StaleBuild[];
+  /** Surfaced when one or more matched tracks resolve to a Master Library entry whose file is missing on disk. */
+  missingMasterpieces: MissingMasterpieces;
   /** Step id of the currently focused step in the right panel */
   activeStepId: StepId;
-  /** Always 12 entries, ordered by index */
+  /** Always 11 entries, ordered by index */
   steps: PipelineStep[];
   recentActivity: ActivityEntry[];
 }
@@ -140,6 +149,21 @@ export interface ReviewTrack {
 
 export type MatchKind = "isrc" | "exact" | "fuzzy";
 
+/**
+ * Which pool the matched file resolved to.
+ * - "library": the file came from the curated Master Library (always preferred when both pools have the same ISRC)
+ * - "nas": the file came from the broader NAS Library scan only
+ */
+export type MatchSource = "library" | "nas";
+
+/**
+ * Whether the curated Master Library file for this track is currently present on disk.
+ * - "present": file exists at libraryPath
+ * - "missing": track is promoted but the file has gone missing (broken masterpiece)
+ * - "n/a": track is not promoted to the Master Library, so this concept does not apply
+ */
+export type LibraryFilePresence = "present" | "missing" | "n/a";
+
 export interface MatchedTrack {
   id: string;
   artist: string;
@@ -147,10 +171,18 @@ export interface MatchedTrack {
   isrc: string;
   filePath: string;
   matchKind: MatchKind;
+  /** Which pool resolved this match (Master Library wins over NAS when both pools have the ISRC). */
+  source: MatchSource;
   spotifyUrl: string;
   tidalUrl: string;
-  /** True when this track has been promoted into the curated Master Library. */
-  promotedToLibrary: boolean;
+  /** True when this track is part of the curated Master Library. */
+  isPromoted: boolean;
+  /** Presence state of the Master Library file. "n/a" when isPromoted is false. */
+  libraryFilePresence: LibraryFilePresence;
+  /** Path to the Master Library file. Only set when isPromoted is true; used by the "Repair in Library" deep-link. */
+  libraryPath?: string;
+  /** False when the source file is not on disk (promote-star is disabled with a tooltip). */
+  canPromote: boolean;
 }
 
 export interface MissedTrack {
@@ -159,6 +191,7 @@ export interface MissedTrack {
   title: string;
   isrc: string;
   spotifyUrl: string;
+  /** Tidal listen / purchase URL for acquiring the missing track. */
   tidalPurchaseUrl: string;
 }
 
@@ -193,24 +226,6 @@ export interface TagCostEstimate {
   estimatedAt: string;
 }
 
-export type SyncService = "spotify" | "tidal";
-
-export type SyncStatus = "not-run" | "running" | "succeeded" | "failed";
-
-export interface SyncResult {
-  service: SyncService;
-  status: SyncStatus;
-  lastSyncedAt: string | null;
-  playlistUrl: string | null;
-  isrcMatched: number | null;
-  isrcMissed: number | null;
-}
-
-export interface SyncResults {
-  spotify: SyncResult;
-  tidal: SyncResult;
-}
-
 export type LogLevel = "debug" | "info" | "warn" | "error" | "metric";
 
 export interface JobLogLine {
@@ -225,7 +240,6 @@ export interface EventDetailDetails {
   matchResults: MatchResults;
   moodAnalysisRows: MoodAnalysisRow[];
   tagCostEstimate: TagCostEstimate;
-  syncResults: SyncResults;
   jobLogLines: JobLogLine[];
   qualityChecks: QualityCheck[];
 }
@@ -235,7 +249,7 @@ export interface EventDetailDetails {
 // =============================================================================
 
 export interface EventDetailProps {
-  /** The event being viewed, with all 12 steps and top-level state */
+  /** The event being viewed, with all 11 steps and top-level state */
   event: EventDetail;
   /** Per-step detail datasets used by the right panel */
   details: EventDetailDetails;
@@ -263,7 +277,7 @@ export interface EventDetailProps {
   onDispatchTagClassification?: () => void;
   /** Called when the user clicks Undo on Apply Tags */
   onUndoTags?: () => void;
-  /** Called when the user copies a Tidal purchase URL from the Match misses list */
+  /** Called when the user copies a Tidal listen / purchase URL from the Match misses list */
   onCopyTidalUrl?: (url: string) => void;
   /** Called when the user reveals a matched track's local file in the OS file manager */
   onOpenLocalFile?: (filePath: string) => void;
@@ -273,10 +287,8 @@ export interface EventDetailProps {
   onOpenTidal?: (url: string) => void;
   /** Called when the user toggles a matched track's promotion to the curated Master Library. `next` is the new state. */
   onPromoteToLibrary?: (trackId: string, next: boolean) => void;
-  /** Called when the user bulk-exports all missing tracks as Tidal purchase URLs (clipboard / .txt download) */
+  /** Called when the user bulk-exports all missing tracks as Tidal listen / purchase URLs (clipboard / .txt download) */
   onExportMissesTidalUrls?: (urls: string[]) => void;
-  /** Called when the user opens a synced Spotify or Tidal playlist URL */
-  onOpenSyncedPlaylist?: (service: SyncService, url: string) => void;
   /** Called when the user clicks "View all in Audit Log" in the recent activity footer */
   onViewAllActivity?: () => void;
 }

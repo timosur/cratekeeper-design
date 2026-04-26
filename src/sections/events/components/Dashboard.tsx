@@ -12,7 +12,7 @@ import type {
   DashboardProps,
   EventCard as EventCardData,
   ActiveJob,
-} from "../../../../product/sections/dashboard/types";
+} from "../../../../product/sections/events/types";
 
 // =============================================================================
 // Top-level Dashboard
@@ -163,18 +163,17 @@ function EventCard({ event, onOpen, onResume }: EventCardProps) {
       </div>
 
       {/* Track counts */}
-      <div className="mx-4 mt-4 grid grid-cols-4 divide-x divide-neutral-200 rounded-md border border-neutral-200 bg-neutral-50 text-center dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-950">
+      <div className="mx-4 mt-4 grid grid-cols-3 divide-x divide-neutral-200 rounded-md border border-neutral-200 bg-neutral-50 text-center dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-950">
         <CountCell label="Total" value={event.trackCounts.total} />
         <CountCell
           label="Matched"
           value={event.trackCounts.matched}
           accent={matchPct >= 95 ? "emerald" : matchPct >= 80 ? "neutral" : "amber"}
         />
-        <CountCell label="Tagged" value={event.trackCounts.tagged} />
         <CountCell
-          label="Synced"
-          value={event.trackCounts.synced}
-          accent={event.trackCounts.synced === event.trackCounts.total ? "emerald" : "neutral"}
+          label="Tagged"
+          value={event.trackCounts.tagged}
+          accent={event.trackCounts.tagged === event.trackCounts.total ? "emerald" : "neutral"}
         />
       </div>
 
@@ -399,7 +398,7 @@ function formatRelative(iso: string): string {
 
 function allDone(event: EventCardData): boolean {
   const c = event.trackCounts;
-  return c.total > 0 && c.synced === c.total && c.tagged === c.total;
+  return c.total > 0 && c.tagged === c.total;
 }
 
 function countNeedsAttention(events: EventCardData[]): number {

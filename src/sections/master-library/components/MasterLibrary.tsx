@@ -22,13 +22,18 @@ import {
   UploadCloud,
   Trash2,
   AlertTriangle,
+  ShieldCheck,
+  Unlink2,
+  Loader2,
 } from "lucide-react";
 import type {
   AudioFormat,
   BucketStat,
   CamelotKey,
+  FilePresence,
   LibraryTrack,
   MasterLibraryProps,
+  TrackOrigin,
 } from "../../../../product/sections/master-library/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,6 +93,30 @@ function healthText(pct: number): string {
   if (pct >= 90) return "text-emerald-700 dark:text-emerald-400";
   if (pct >= 75) return "text-amber-700 dark:text-amber-400";
   return "text-red-700 dark:text-red-400";
+}
+
+function presenceDotClass(p: FilePresence): string {
+  switch (p) {
+    case "present":
+      return "bg-emerald-500";
+    case "missing":
+      return "bg-red-500";
+    case "unknown":
+    default:
+      return "bg-amber-400";
+  }
+}
+
+function presenceLabel(p: FilePresence): string {
+  switch (p) {
+    case "present":
+      return "Present on disk";
+    case "missing":
+      return "Missing on disk";
+    case "unknown":
+    default:
+      return "Not yet verified";
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,9 +193,7 @@ function Chip({
       {count !== undefined ? (
         <span
           className={`tabular-nums ${
-            active
-              ? "text-white/80"
-              : "text-neutral-500 dark:text-neutral-500"
+            active ? "text-white/80" : "text-neutral-500 dark:text-neutral-500"
           }`}
           style={mono}
         >
@@ -203,18 +230,21 @@ function SecondaryBtn({
   onClick,
   icon,
   title,
+  disabled,
 }: {
   children?: React.ReactNode;
   onClick?: () => void;
   icon?: React.ReactNode;
   title?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
-      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 text-[12px] font-medium transition-colors"
+      disabled={disabled}
+      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 text-[12px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {icon}
       {children}
@@ -228,32 +258,71 @@ function SecondaryBtn({
 
 function OverviewStrip({
   overview,
+  onVerifyLibrary,
+  onShowMissing,
 }: {
   overview: MasterLibraryProps["overview"];
+  onVerifyLibrary?: () => void;
+  onShowMissing?: () => void;
 }) {
-  const { totalTracks, totalStorageBytes, eventsServed, health, lastUpdatedAt } =
-    overview;
+  const {
+    totalTracks,
+    totalStorageBytes,
+    eventsServed,
+    health,
+    lastUpdatedAt,
+    lastVerifiedAt,
+    verifyStatus,
+  } = overview;
+
   const overall = Math.round(
-    (health.tagsPercent + health.artworkPercent + health.analysisPercent) / 3,
+    (health.tagsPercent +
+      health.artworkPercent +
+      health.analysisPercent +
+      health.onDisk.percent) /
+      4,
   );
+
+  const verifying = verifyStatus === "running";
+  const missingCount = health.onDisk.missingCount;
 
   return (
     <div>
-      <div className="flex items-end justify-between mb-3">
+      <div className="flex items-end justify-between mb-3 gap-4 flex-wrap">
         <div>
           <h2 className="text-[20px] font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">
             Master Library
           </h2>
           <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">
-            Your curated collection {"\u2014"} masterpieces and every-event essentials.
+            Your curated collection on disk {"\u2014"} masterpieces and every-event essentials.
           </p>
         </div>
-        <div
-          className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400"
-          style={mono}
-        >
-          <RefreshCw className="w-3 h-3" />
-          updated {formatRelative(lastUpdatedAt)}
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400"
+            style={mono}
+          >
+            <RefreshCw className="w-3 h-3" />
+            updated {formatRelative(lastUpdatedAt)}
+          </div>
+          <SecondaryBtn
+            onClick={onVerifyLibrary}
+            disabled={verifying}
+            icon={
+              verifying ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500" />
+              ) : (
+                <ShieldCheck className="w-3.5 h-3.5 text-sky-500" />
+              )
+            }
+            title={
+              lastVerifiedAt
+                ? `Last verified ${formatRelative(lastVerifiedAt)}`
+                : "Never verified"
+            }
+          >
+            {verifying ? "Verifying\u2026" : "Verify library"}
+          </SecondaryBtn>
         </div>
       </div>
 
@@ -275,6 +344,31 @@ function OverviewStrip({
         />
         <HealthTile overall={overall} health={health} />
       </div>
+
+      {missingCount > 0 ? (
+        <button
+          type="button"
+          onClick={onShowMissing}
+          className="mt-3 w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-md border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 text-left hover:bg-red-100/70 dark:hover:bg-red-950/50 transition-colors"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+            <div className="text-[12.5px] text-red-800 dark:text-red-300">
+              <span className="font-semibold" style={mono}>
+                {formatNumber(missingCount)}
+              </span>{" "}
+              {missingCount === 1 ? "masterpiece" : "masterpieces"} missing on disk
+              {" \u2014 "}
+              <span className="text-red-700/80 dark:text-red-400/80">
+                resolve before destructive Build runs.
+              </span>
+            </div>
+          </div>
+          <span className="flex-shrink-0 text-[11.5px] font-medium text-red-700 dark:text-red-400 underline">
+            Show missing
+          </span>
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -311,10 +405,15 @@ function HealthTile({
   overall: number;
   health: MasterLibraryProps["overview"]["health"];
 }) {
-  const segments: Array<{ label: string; pct: number }> = [
+  const segments: Array<{ label: string; pct: number; emphasize?: boolean }> = [
     { label: "Tags", pct: health.tagsPercent },
     { label: "Artwork", pct: health.artworkPercent },
     { label: "Analysis", pct: health.analysisPercent },
+    {
+      label: "On disk",
+      pct: health.onDisk.percent,
+      emphasize: health.onDisk.missingCount > 0,
+    },
   ];
 
   return (
@@ -331,17 +430,29 @@ function HealthTile({
           {overall}%
         </span>
       </div>
-      <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+      <div className="mt-2.5 grid grid-cols-4 gap-1.5">
         {segments.map((s) => (
           <div key={s.label}>
-            <div className="h-1.5 rounded-sm bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+            <div
+              className={`h-1.5 rounded-sm overflow-hidden ${
+                s.emphasize
+                  ? "bg-red-100 dark:bg-red-950/40"
+                  : "bg-neutral-100 dark:bg-neutral-800"
+              }`}
+            >
               <div
                 className={`h-full ${healthAccent(s.pct)}`}
                 style={{ width: `${s.pct}%` }}
               />
             </div>
-            <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-[10.5px] text-neutral-500 dark:text-neutral-400">
+            <div className="mt-1 flex items-baseline justify-between gap-1">
+              <span
+                className={`text-[10.5px] truncate ${
+                  s.emphasize
+                    ? "text-red-700 dark:text-red-400 font-medium"
+                    : "text-neutral-500 dark:text-neutral-400"
+                }`}
+              >
                 {s.label}
               </span>
               <span
@@ -622,6 +733,8 @@ function SortHeader({
 interface TracksFilterState {
   query: string;
   bucketIds: string[];
+  origins: TrackOrigin[];
+  presence: FilePresence | "any";
   bpmRange: [number, number];
   key: CamelotKey | "any";
   formats: AudioFormat[];
@@ -656,6 +769,14 @@ function TrackFilters({
         : [...filters.formats, f],
     });
 
+  const toggleOrigin = (o: TrackOrigin) =>
+    setFilters({
+      ...filters,
+      origins: filters.origins.includes(o)
+        ? filters.origins.filter((x) => x !== o)
+        : [...filters.origins, o],
+    });
+
   return (
     <div className="px-5 py-4 border-b border-neutral-200 dark:border-neutral-800 space-y-3.5">
       {/* search row */}
@@ -682,6 +803,54 @@ function TrackFilters({
             Clear filters
           </button>
         ) : null}
+      </div>
+
+      {/* origin + presence row */}
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div>
+          <FilterLabel>Origin</FilterLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {filterOptions.origins.map((o) => (
+              <Chip
+                key={o.id}
+                active={filters.origins.includes(o.id)}
+                onClick={() => toggleOrigin(o.id)}
+                count={o.count}
+              >
+                {o.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div>
+          <FilterLabel>Presence</FilterLabel>
+          <div className="flex flex-wrap gap-1.5">
+            {(["any", "present", "missing", "unknown"] as const).map((p) => (
+              <Chip
+                key={p}
+                active={filters.presence === p}
+                onClick={() => setFilters({ ...filters, presence: p })}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  {p !== "any" ? (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${presenceDotClass(
+                        p,
+                      )}`}
+                    />
+                  ) : null}
+                  {p === "any"
+                    ? "Any"
+                    : p === "present"
+                      ? "Present"
+                      : p === "missing"
+                        ? "Missing"
+                        : "Unverified"}
+                </span>
+              </Chip>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* bucket chips */}
@@ -826,7 +995,7 @@ function BpmRange({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// origin chip
+// origin chip + presence dot
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OriginChip({
@@ -854,18 +1023,45 @@ function OriginChip({
   );
 }
 
+function PresenceDot({
+  presence,
+  lastVerifiedAt,
+}: {
+  presence: FilePresence;
+  lastVerifiedAt: string | null;
+}) {
+  const verifiedLine = lastVerifiedAt
+    ? `Verified ${formatRelative(lastVerifiedAt)}`
+    : "Never verified";
+  const tooltip = `${presenceLabel(presence)} \u00b7 ${verifiedLine}`;
+  return (
+    <span
+      className="inline-flex items-center justify-center w-3 h-3"
+      title={tooltip}
+      aria-label={tooltip}
+    >
+      <span
+        className={`block w-2 h-2 rounded-full ${presenceDotClass(presence)} ${
+          presence === "missing" ? "ring-2 ring-red-500/20" : ""
+        }`}
+      />
+    </span>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // tracks table
 // ─────────────────────────────────────────────────────────────────────────────
 
 type TrackSortKey =
+  | "presence"
   | "title"
   | "bucketName"
   | "bpm"
   | "origin"
   | "timesUsed"
-  | "addedAt"
-  | "fileSizeBytes";
+  | "addedToLibraryAt"
+  | "recordedFileSize";
 
 const PAGE_SIZE = 50;
 
@@ -876,6 +1072,7 @@ function TracksTable({
   onRevealInFinder,
   onOpenSourceEvent,
   onRequestRemove,
+  onRequestDropMissing,
 }: {
   tracks: LibraryTrack[];
   filteredCount: number;
@@ -883,17 +1080,27 @@ function TracksTable({
   onRevealInFinder?: (track: LibraryTrack) => void;
   onOpenSourceEvent?: (eventId: string) => void;
   onRequestRemove: (track: LibraryTrack) => void;
+  onRequestDropMissing: (track: LibraryTrack) => void;
 }) {
-  const [sortKey, setSortKey] = useState<TrackSortKey>("addedAt");
+  const [sortKey, setSortKey] = useState<TrackSortKey>("addedToLibraryAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
 
   const sorted = useMemo(() => {
+    const presenceRank: Record<FilePresence, number> = {
+      missing: 0,
+      unknown: 1,
+      present: 2,
+    };
     const copy = [...tracks];
     copy.sort((a, b) => {
       let av: string | number;
       let bv: string | number;
       switch (sortKey) {
+        case "presence":
+          av = presenceRank[a.localFilePresence];
+          bv = presenceRank[b.localFilePresence];
+          break;
         case "title":
           av = a.title.toLowerCase();
           bv = b.title.toLowerCase();
@@ -906,9 +1113,9 @@ function TracksTable({
           av = a.origin;
           bv = b.origin;
           break;
-        case "addedAt":
-          av = new Date(a.addedAt).getTime();
-          bv = new Date(b.addedAt).getTime();
+        case "addedToLibraryAt":
+          av = new Date(a.addedToLibraryAt).getTime();
+          bv = new Date(b.addedToLibraryAt).getTime();
           break;
         default:
           av = a[sortKey] as number;
@@ -931,7 +1138,11 @@ function TracksTable({
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDir(key === "title" || key === "origin" ? "asc" : "desc");
+      setSortDir(
+        key === "title" || key === "origin" || key === "presence"
+          ? "asc"
+          : "desc",
+      );
     }
     setPage(1);
   };
@@ -943,11 +1154,18 @@ function TracksTable({
           <thead>
             <tr className="text-left bg-neutral-50/60 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800">
               <SortHeader
+                label=""
+                active={sortKey === "presence"}
+                dir={sortDir}
+                onClick={() => handleSort("presence")}
+                className="pl-5 pr-1 py-2 w-[28px]"
+              />
+              <SortHeader
                 label="Title / Artist"
                 active={sortKey === "title"}
                 dir={sortDir}
                 onClick={() => handleSort("title")}
-                className="pl-5 pr-3 py-2 w-[24%]"
+                className="px-3 py-2 w-[24%]"
               />
               <SortHeader
                 label="Bucket"
@@ -981,17 +1199,17 @@ function TracksTable({
               />
               <SortHeader
                 label="Added"
-                active={sortKey === "addedAt"}
+                active={sortKey === "addedToLibraryAt"}
                 dir={sortDir}
-                onClick={() => handleSort("addedAt")}
+                onClick={() => handleSort("addedToLibraryAt")}
                 align="right"
                 className="px-3 py-2 w-[10%]"
               />
               <SortHeader
                 label="Size"
-                active={sortKey === "fileSizeBytes"}
+                active={sortKey === "recordedFileSize"}
                 dir={sortDir}
-                onClick={() => handleSort("fileSizeBytes")}
+                onClick={() => handleSort("recordedFileSize")}
                 align="right"
                 className="px-3 py-2 w-[10%]"
               />
@@ -1001,140 +1219,203 @@ function TracksTable({
           <tbody>
             {pageRows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center">
+                <td colSpan={9} className="px-5 py-12 text-center">
                   <div className="text-[13px] text-neutral-500 dark:text-neutral-400">
                     No tracks match the current filters.
                   </div>
                 </td>
               </tr>
             ) : (
-              pageRows.map((t) => (
-                <tr
-                  key={t.id}
-                  onClick={() => onRevealInFinder?.(t)}
-                  className="group cursor-pointer border-b last:border-b-0 border-neutral-100 dark:border-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
-                >
-                  <td className="pl-5 pr-3 py-2.5">
-                    <div
-                      className="font-semibold text-neutral-900 dark:text-neutral-100 truncate max-w-[28ch]"
-                      title={t.title}
-                    >
-                      {t.title}
-                    </div>
-                    <div
-                      className="text-[11.5px] text-neutral-500 dark:text-neutral-400 truncate max-w-[28ch]"
-                      title={t.artist}
-                    >
-                      {t.artist}
-                    </div>
-                    <div
-                      className="text-[10.5px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5"
-                      style={mono}
-                      title={t.filePath}
-                    >
-                      {truncatePath(t.filePath, 44)}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className="inline-flex items-center h-5 px-1.5 rounded text-[10.5px] font-medium border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300">
-                      {t.bucketName}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-right" style={mono}>
-                    <div className="text-neutral-900 dark:text-neutral-100">
-                      {t.bpm}
-                    </div>
-                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      {t.key}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-col gap-1">
-                      <OriginChip
-                        origin={t.origin}
-                        sourceEventName={t.sourceEventName}
-                      />
-                      {t.origin === "promoted" && t.sourceEventId && t.sourceEventName ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenSourceEvent?.(t.sourceEventId!);
-                          }}
-                          className="text-[11px] text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline truncate max-w-[18ch] text-left"
-                          title={t.sourceEventName}
-                        >
-                          {t.sourceEventName}
-                        </button>
-                      ) : (
-                        <span
-                          className="text-[11px] text-neutral-400 dark:text-neutral-500"
-                          style={mono}
-                        >
-                          {"\u2014"}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-right" style={mono}>
-                    <div className="text-neutral-900 dark:text-neutral-100">
-                      {t.timesUsed === 0 ? (
-                        <span className="text-neutral-400 dark:text-neutral-500">0</span>
-                      ) : (
-                        `${t.timesUsed}\u00d7`
-                      )}
-                    </div>
-                    <div
-                      className="text-[10.5px] text-neutral-500 dark:text-neutral-400 truncate max-w-[12ch] ml-auto"
-                      title={t.lastUsedInEvent?.eventName ?? undefined}
-                    >
-                      {t.lastUsedInEvent
-                        ? formatRelative(t.lastUsedInEvent.date)
-                        : "Never"}
-                    </div>
-                  </td>
-                  <td
-                    className="px-3 py-2.5 text-right text-neutral-600 dark:text-neutral-400"
-                    style={mono}
+              pageRows.map((t) => {
+                const isMissing = t.localFilePresence === "missing";
+                const drift =
+                  !isMissing &&
+                  t.fileSizeOnDisk !== null &&
+                  t.fileSizeOnDisk !== t.recordedFileSize;
+                return (
+                  <tr
+                    key={t.id}
+                    onClick={() => {
+                      if (!isMissing) onRevealInFinder?.(t);
+                    }}
+                    className={`group border-b last:border-b-0 border-neutral-100 dark:border-neutral-800/60 transition-colors ${
+                      isMissing
+                        ? "cursor-not-allowed bg-red-50/40 dark:bg-red-950/10 hover:bg-red-50/60 dark:hover:bg-red-950/20"
+                        : "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
+                    }`}
                   >
-                    {formatRelative(t.addedAt)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right" style={mono}>
-                    <div className="text-neutral-900 dark:text-neutral-100">
-                      {formatBytes(t.fileSizeBytes)}
-                    </div>
-                    <div className="text-[10.5px] text-neutral-500 dark:text-neutral-400">
-                      {t.format}
-                    </div>
-                  </td>
-                  <td className="px-3 pr-5 py-2.5">
-                    <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRevealInFinder?.(t);
-                        }}
-                        title="Reveal in Finder"
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-md text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                    <td className="pl-5 pr-1 py-2.5">
+                      <PresenceDot
+                        presence={t.localFilePresence}
+                        lastVerifiedAt={t.lastVerifiedAt}
+                      />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div
+                        className={`font-semibold truncate max-w-[28ch] ${
+                          isMissing
+                            ? "text-neutral-500 dark:text-neutral-500"
+                            : "text-neutral-900 dark:text-neutral-100"
+                        }`}
+                        title={t.title}
                       >
-                        <FolderOpen className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRequestRemove(t);
-                        }}
-                        title="Remove from library"
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                        {t.title}
+                      </div>
+                      <div
+                        className="text-[11.5px] text-neutral-500 dark:text-neutral-400 truncate max-w-[28ch]"
+                        title={t.artist}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        {t.artist}
+                      </div>
+                      <div
+                        className={`text-[10.5px] truncate mt-0.5 ${
+                          isMissing
+                            ? "text-red-500/80 dark:text-red-400/70 line-through"
+                            : "text-neutral-400 dark:text-neutral-500"
+                        }`}
+                        style={mono}
+                        title={t.filePath}
+                      >
+                        {truncatePath(t.filePath, 44)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="inline-flex items-center h-5 px-1.5 rounded text-[10.5px] font-medium border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300">
+                        {t.bucketName}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right" style={mono}>
+                      <div className="text-neutral-900 dark:text-neutral-100">
+                        {t.bpm}
+                      </div>
+                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                        {t.key}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-col gap-1">
+                        <OriginChip
+                          origin={t.origin}
+                          sourceEventName={t.promotedFromEventName ?? null}
+                        />
+                        {t.origin === "promoted" &&
+                        t.promotedFromEventId &&
+                        t.promotedFromEventName ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenSourceEvent?.(t.promotedFromEventId!);
+                            }}
+                            className="text-[11px] text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline truncate max-w-[18ch] text-left"
+                            title={t.promotedFromEventName}
+                          >
+                            {t.promotedFromEventName}
+                          </button>
+                        ) : (
+                          <span
+                            className="text-[11px] text-neutral-400 dark:text-neutral-500"
+                            style={mono}
+                          >
+                            {"\u2014"}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right" style={mono}>
+                      <div className="text-neutral-900 dark:text-neutral-100">
+                        {t.timesUsed === 0 ? (
+                          <span className="text-neutral-400 dark:text-neutral-500">
+                            0
+                          </span>
+                        ) : (
+                          `${t.timesUsed}\u00d7`
+                        )}
+                      </div>
+                      <div
+                        className="text-[10.5px] text-neutral-500 dark:text-neutral-400 truncate max-w-[12ch] ml-auto"
+                        title={t.lastUsedInEvent?.eventName ?? undefined}
+                      >
+                        {t.lastUsedInEvent
+                          ? formatRelative(t.lastUsedInEvent.date)
+                          : "Never"}
+                      </div>
+                    </td>
+                    <td
+                      className="px-3 py-2.5 text-right text-neutral-600 dark:text-neutral-400"
+                      style={mono}
+                    >
+                      {formatRelative(t.addedToLibraryAt)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right" style={mono}>
+                      <div className="flex items-center justify-end gap-1">
+                        <span
+                          className={
+                            isMissing
+                              ? "text-neutral-500 dark:text-neutral-500 line-through"
+                              : "text-neutral-900 dark:text-neutral-100"
+                          }
+                        >
+                          {formatBytes(t.recordedFileSize)}
+                        </span>
+                        {drift ? (
+                          <span
+                            className="w-1.5 h-1.5 rounded-full bg-amber-500"
+                            title={`Size on disk drifted: was ${formatBytes(
+                              t.recordedFileSize,
+                            )}, now ${formatBytes(t.fileSizeOnDisk!)}`}
+                          />
+                        ) : null}
+                      </div>
+                      <div className="text-[10.5px] text-neutral-500 dark:text-neutral-400">
+                        {t.format}
+                      </div>
+                    </td>
+                    <td className="px-3 pr-5 py-2.5">
+                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        {!isMissing ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRevealInFinder?.(t);
+                            }}
+                            title="Reveal in Finder"
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                          </button>
+                        ) : null}
+                        {isMissing ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRequestDropMissing(t);
+                            }}
+                            title="Drop missing entry"
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                          >
+                            <Unlink2 className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRequestRemove(t);
+                            }}
+                            title="Remove from library"
+                            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -1215,7 +1496,7 @@ function PageBtn({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// remove confirmation modal
+// removal confirmations (two flows)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RemoveConfirmModal({
@@ -1284,6 +1565,70 @@ function RemoveConfirmModal({
   );
 }
 
+function DropMissingConfirmModal({
+  track,
+  onCancel,
+  onConfirm,
+}: {
+  track: LibraryTrack;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-md mx-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-9 h-9 rounded-md bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+              <Unlink2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-[14px] font-semibold text-neutral-900 dark:text-neutral-100">
+                Drop missing entry?
+              </h3>
+              <p className="mt-1 text-[12.5px] text-neutral-600 dark:text-neutral-400">
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {track.title}
+                </span>{" "}
+                by {track.artist} no longer has a file on disk. There is nothing
+                to keep.
+              </p>
+              <p className="mt-2 text-[11.5px] text-neutral-500 dark:text-neutral-500">
+                The library entry will be removed. Your collection's missing-files
+                count will decrease by one.
+              </p>
+              <div
+                className="mt-2.5 text-[10.5px] text-red-500/70 dark:text-red-400/70 truncate line-through"
+                style={mono}
+                title={track.filePath}
+              >
+                {truncatePath(track.filePath, 60)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/60 rounded-b-md">
+          <SecondaryBtn onClick={onCancel}>Cancel</SecondaryBtn>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-neutral-700 hover:bg-neutral-800 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-white text-[12px] font-medium transition-colors shadow-sm"
+          >
+            <Unlink2 className="w-3.5 h-3.5" />
+            Drop entry
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // drag-and-drop overlay
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1325,17 +1670,22 @@ export function MasterLibrary({
   onImportFromSpotify,
   onDropAudioFiles,
   onPromoteFromEvent,
+  onVerifyLibrary,
   onRemoveFromLibrary,
+  onDropMissingEntry,
 }: MasterLibraryProps) {
   const [filters, setFilters] = useState<TracksFilterState>({
     query: "",
     bucketIds: [],
+    origins: [],
+    presence: "any",
     bpmRange: [filterOptions.bpmMin, filterOptions.bpmMax],
     key: "any",
     formats: [],
   });
 
   const [pendingRemove, setPendingRemove] = useState<LibraryTrack | null>(null);
+  const [pendingDrop, setPendingDrop] = useState<LibraryTrack | null>(null);
 
   // drag-and-drop state — uses a counter to handle nested dragenter/dragleave
   const [isDragging, setIsDragging] = useState(false);
@@ -1380,6 +1730,8 @@ export function MasterLibrary({
   const hasActive =
     filters.query !== "" ||
     filters.bucketIds.length > 0 ||
+    filters.origins.length > 0 ||
+    filters.presence !== "any" ||
     filters.formats.length > 0 ||
     filters.key !== "any" ||
     filters.bpmRange[0] !== filterOptions.bpmMin ||
@@ -1397,6 +1749,13 @@ export function MasterLibrary({
       if (
         filters.bucketIds.length > 0 &&
         !filters.bucketIds.includes(t.bucketId)
+      )
+        return false;
+      if (filters.origins.length > 0 && !filters.origins.includes(t.origin))
+        return false;
+      if (
+        filters.presence !== "any" &&
+        t.localFilePresence !== filters.presence
       )
         return false;
       if (t.bpm < filters.bpmRange[0] || t.bpm > filters.bpmRange[1])
@@ -1422,15 +1781,27 @@ export function MasterLibrary({
     setFilters({
       query: "",
       bucketIds: [],
+      origins: [],
+      presence: "any",
       bpmRange: [filterOptions.bpmMin, filterOptions.bpmMax],
       key: "any",
       formats: [],
     });
 
+  const handleShowMissing = () =>
+    setFilters((f) => ({ ...f, presence: "missing" }));
+
   const handleConfirmRemove = () => {
     if (pendingRemove) {
       onRemoveFromLibrary?.(pendingRemove);
       setPendingRemove(null);
+    }
+  };
+
+  const handleConfirmDrop = () => {
+    if (pendingDrop) {
+      onDropMissingEntry?.(pendingDrop);
+      setPendingDrop(null);
     }
   };
 
@@ -1440,7 +1811,11 @@ export function MasterLibrary({
       className="min-h-full bg-neutral-50 dark:bg-neutral-950 relative"
     >
       <div className="max-w-[1280px] mx-auto px-6 py-6 space-y-5">
-        <OverviewStrip overview={overview} />
+        <OverviewStrip
+          overview={overview}
+          onVerifyLibrary={onVerifyLibrary}
+          onShowMissing={handleShowMissing}
+        />
 
         <GenresTable
           buckets={buckets}
@@ -1459,7 +1834,7 @@ export function MasterLibrary({
                 </span>
               </>
             }
-            subtitle="Click a row to reveal the file in Finder."
+            subtitle="Click a row to reveal the file in Finder. Missing files are read-only."
             trailing={
               <div className="flex items-center gap-2">
                 <SecondaryBtn
@@ -1498,6 +1873,7 @@ export function MasterLibrary({
             onRevealInFinder={onRevealInFinder}
             onOpenSourceEvent={onOpenSourceEvent}
             onRequestRemove={(t) => setPendingRemove(t)}
+            onRequestDropMissing={(t) => setPendingDrop(t)}
           />
         </Card>
 
@@ -1517,6 +1893,14 @@ export function MasterLibrary({
           track={pendingRemove}
           onCancel={() => setPendingRemove(null)}
           onConfirm={handleConfirmRemove}
+        />
+      ) : null}
+
+      {pendingDrop ? (
+        <DropMissingConfirmModal
+          track={pendingDrop}
+          onCancel={() => setPendingDrop(null)}
+          onConfirm={handleConfirmDrop}
         />
       ) : null}
     </div>

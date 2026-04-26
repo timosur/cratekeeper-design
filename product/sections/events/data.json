@@ -1,13 +1,13 @@
 {
   "_meta": {
     "models": {
-      "events": "Each event represents a single gig (wedding, party) being prepared, with its current progress through the 12-step pipeline, track counts, the active job (if any), and warnings like stale builds."
+      "events": "Each event represents a single gig (wedding, party) being prepared, with its current progress through the 11-step pipeline, track counts, the active job (if any), and warnings like stale builds."
     },
     "relationships": [
       "Each Event has its own slug, source Spotify playlist URL, and on-disk output folder",
-      "Each Event tracks its position in the 12-step pipeline via currentStepIndex",
+      "Each Event tracks its position in the 11-step pipeline via currentStepIndex",
       "Each Event optionally has one activeJob describing what's currently running, queued, or recently failed",
-      "Track counts (total / matched / tagged / synced) summarize the EventTracks belonging to the event"
+      "Track counts (total / matched / tagged) summarize the EventTracks belonging to the event"
     ]
   },
   "events": [
@@ -19,12 +19,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
       "currentStepIndex": 6,
       "currentStepLabel": "Analyze Mood",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 124,
         "matched": 118,
-        "tagged": 0,
-        "synced": 0
+        "tagged": 0
       },
       "activeJob": {
         "id": "job-9281",
@@ -41,14 +40,13 @@
       "slug": "friday-cocktail",
       "eventDate": "2026-04-25",
       "playlistUrl": "https://open.spotify.com/playlist/2fmTTbBkXi8pewbUvG3CeZ",
-      "currentStepIndex": 11,
-      "currentStepLabel": "Sync Tidal",
-      "totalSteps": 12,
+      "currentStepIndex": 10,
+      "currentStepLabel": "Build Library",
+      "totalSteps": 11,
       "trackCounts": {
         "total": 64,
         "matched": 64,
-        "tagged": 64,
-        "synced": 64
+        "tagged": 64
       },
       "activeJob": null,
       "isStale": false,
@@ -62,12 +60,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/37i9dQZF1DX4SBhb3fqCJd",
       "currentStepIndex": 7,
       "currentStepLabel": "Classify Tags",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 87,
         "matched": 84,
-        "tagged": 32,
-        "synced": 0
+        "tagged": 32
       },
       "activeJob": {
         "id": "job-9272",
@@ -87,12 +84,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/0wWqIJlbqjkjqcUw6gP3kP",
       "currentStepIndex": 9,
       "currentStepLabel": "Apply Tags",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 156,
         "matched": 149,
-        "tagged": 149,
-        "synced": 0
+        "tagged": 149
       },
       "activeJob": null,
       "isStale": true,
@@ -106,12 +102,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/37i9dQZF1DX8tZsk68tuDw",
       "currentStepIndex": 0,
       "currentStepLabel": "Fetch",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 42,
         "matched": 0,
-        "tagged": 0,
-        "synced": 0
+        "tagged": 0
       },
       "activeJob": null,
       "isStale": false,
@@ -125,12 +120,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/4LdyPjEAyc8x5PBwrJQ8XQ",
       "currentStepIndex": 6,
       "currentStepLabel": "Analyze Mood",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 98,
         "matched": 95,
-        "tagged": 0,
-        "synced": 0
+        "tagged": 0
       },
       "activeJob": {
         "id": "job-9285",
@@ -150,12 +144,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/37i9dQZF1DX4dyzvuaRJ0n",
       "currentStepIndex": 10,
       "currentStepLabel": "Build Event",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 73,
         "matched": 71,
-        "tagged": 71,
-        "synced": 0
+        "tagged": 71
       },
       "activeJob": {
         "id": "job-9279",
@@ -174,12 +167,11 @@
       "playlistUrl": "https://open.spotify.com/playlist/3a6XO4DJtWMuJB0d4u9qRq",
       "currentStepIndex": 8,
       "currentStepLabel": "Apply Tags",
-      "totalSteps": 12,
+      "totalSteps": 11,
       "trackCounts": {
         "total": 18,
         "matched": 18,
-        "tagged": 18,
-        "synced": 0
+        "tagged": 18
       },
       "activeJob": {
         "id": "job-9268",

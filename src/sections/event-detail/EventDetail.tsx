@@ -36,7 +36,9 @@ export default function EventDetailPreview() {
       onPromoteToLibrary={(trackId, next) =>
         console.log(next ? "promote to library:" : "remove from library:", trackId)
       }
-      onOpenSyncedPlaylist={(svc, url) => console.log("open synced", svc, url)}
+      onRepairInLibrary={(track) =>
+        console.log("repair in library:", track.title, "at", track.libraryPath ?? "(no path)")
+      }
       onViewAllActivity={() => console.log("view all activity")}
     />
   );

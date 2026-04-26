@@ -1,7 +1,7 @@
 # Settings Specification
 
 ## Overview
-Settings is the single place to configure all credentials, paths, and vocabularies that drive the pipeline: Spotify and Tidal OAuth, the Anthropic API key and model, filesystem roots, the bearer token for the local API, and the editable genre-bucket list. It is the only screen that exposes sensitive values and destructive credential actions, so it favors clarity and explicit confirmation over speed.
+Settings is the single place to configure all credentials, paths, and vocabularies that drive the pipeline: Spotify OAuth (the source of every event's wish playlist), Tidal OAuth (used only as a secondary listening / acquisition target via per-track URLs), the Anthropic API key and model, filesystem roots, the bearer token for the local API, and the editable genre-bucket list. It is the only screen that exposes sensitive values and destructive credential actions, so it favors clarity and explicit confirmation over speed.
 
 ## User Flows
 

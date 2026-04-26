@@ -1,18 +1,21 @@
 {
   "_meta": {
     "models": {
-      "event": "The single event being worked on. Holds the event header (name, date, slug, playlist), top-level health banners (quality gate + stale builds), the 12-step pipeline rail with per-step status and summaries, plus inline detail data for the active step.",
-      "steps": "The 12 ordered pipeline steps grouped into phases (Intake, Classify, Library, Analysis, Tagging, Build & Sync). Each carries its current status, last run timestamp, and a one-line summary.",
+      "event": "The single event being worked on. Holds the event header (name, date, slug, playlist), top-level health banners (quality gate, stale builds, missing masterpieces) and quick stats (Total / Matched / From Library / Tagged), the 11-step pipeline rail with per-step status and summaries, plus inline detail data for the active step.",
+      "steps": "The 11 ordered pipeline steps grouped into phases (Intake, Classify, Library, Analysis, Tagging, Build). Each carries its current status, last run timestamp, and a one-line summary.",
       "qualityGate": "The pre-flight Quality Checks result. Surfaces failing checks that block destructive steps until reviewed or overridden.",
       "staleBuilds": "Downstream folder builds that have gone out of date because tags or matches changed. Lists which build needs rebuilding.",
+      "missingMasterpieces": "Matched tracks in this event that resolve to a curated Master Library entry whose file is currently missing on disk. Surfaced as a banner that gates destructive Build steps until repaired.",
       "recentActivity": "The last few audit-log entries scoped to this event, shown in the panel footer.",
-      "details": "Per-step detail datasets used by individual step panels: classify distribution, review queue, match results, analyze rows, tag-cost estimate, sync results, plus the live job log."
+      "details": "Per-step detail datasets used by individual step panels: classify distribution, review queue, match results (with per-row source pill and promote-star state), analyze rows, tag-cost estimate, plus the live job log."
     },
     "relationships": [
-      "Each Event contains exactly 12 ordered Steps belonging to one of 6 Phases",
+      "Each Event contains exactly 11 ordered Steps belonging to one of 6 Phases",
       "The currently running Job (when present) belongs to the active Step and produces live SSE log lines",
-      "Quality Gate failures gate every destructive step (Apply Tags, Build Event, Build Library, Sync) until cleared or overridden",
+      "Quality Gate failures gate every destructive step (Apply Tags, Build Event, Build Library) until cleared or overridden",
       "Stale Builds are a consequence of a successful Apply Tags after a previous Build",
+      "Each Matched Track resolves from either the Master Library pool (source=library) or the broader NAS Library pool (source=nas); the Master Library always wins when both pools have the same ISRC",
+      "Missing Masterpieces are matched tracks where isPromoted=true but the libraryFilePresence is missing; their count drives the top-level banner",
       "Recent Activity entries are AuditEntries scoped to this Event, ordered newest-first"
     ]
   },
@@ -25,8 +28,8 @@
     "trackCounts": {
       "total": 124,
       "matched": 118,
-      "tagged": 0,
-      "synced": 0
+      "fromLibrary": 89,
+      "tagged": 0
     },
     "qualityGate": {
       "status": "warning",
@@ -35,6 +38,10 @@
       "lastCheckedAt": "2026-04-24T13:42:00Z"
     },
     "staleBuilds": [],
+    "missingMasterpieces": {
+      "count": 2,
+      "trackIds": ["trk-0003", "trk-0007"]
+    },
     "activeStepId": "analyze-mood",
     "steps": [
       {
@@ -149,7 +156,7 @@
       },
       {
         "id": "build-event",
-        "phase": "Build & Sync",
+        "phase": "Build",
         "index": 10,
         "label": "Build Event",
         "description": "Copy or symlink into Genre/Artist - Title.ext.",
@@ -160,21 +167,10 @@
       },
       {
         "id": "build-library",
-        "phase": "Build & Sync",
+        "phase": "Build",
         "index": 11,
         "label": "Build Library",
         "description": "Master library accumulator across events.",
-        "status": "idle",
-        "lastRunAt": null,
-        "lastRunDurationMs": null,
-        "summary": "Awaiting event build"
-      },
-      {
-        "id": "sync",
-        "phase": "Build & Sync",
-        "index": 12,
-        "label": "Sync",
-        "description": "Per-event sub-playlists to Spotify and Tidal.",
         "status": "idle",
         "lastRunAt": null,
         "lastRunDurationMs": null,
@@ -258,16 +254,16 @@
     ],
     "matchResults": {
       "matched": [
-        { "id": "trk-0001", "artist": "Stevie Wonder", "title": "Sir Duke", "isrc": "USMO16800027", "filePath": "/Volumes/Music/Funk/Stevie Wonder - Sir Duke.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/2WfaOiMkCvy7F5fcp2zZ8L", "tidalUrl": "https://tidal.com/browse/track/77640617", "promotedToLibrary": false },
-        { "id": "trk-0002", "artist": "Earth, Wind & Fire", "title": "September", "isrc": "USCO27800007", "filePath": "/Volumes/Music/Disco/Earth, Wind & Fire - September.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/3kxfsdsCpFgN412fpnW85Y", "tidalUrl": "https://tidal.com/browse/track/8551291", "promotedToLibrary": true },
-        { "id": "trk-0003", "artist": "Daft Punk", "title": "Get Lucky", "isrc": "GBDUW1300026", "filePath": "/Volumes/Music/House/Daft Punk - Get Lucky.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/2Foc5Q5nqNiosCNqttzHof", "tidalUrl": "https://tidal.com/browse/track/22630510", "promotedToLibrary": true },
-        { "id": "trk-0004", "artist": "Beyonc\u00e9", "title": "Crazy in Love", "isrc": "USSM10309027", "filePath": "/Volumes/Music/Pop/Beyonce - Crazy in Love.m4a", "matchKind": "exact", "spotifyUrl": "https://open.spotify.com/track/5IVuqXILoxVWvWEPm82Jxr", "tidalUrl": "https://tidal.com/browse/track/24037421", "promotedToLibrary": true },
-        { "id": "trk-0005", "artist": "Outkast", "title": "Hey Ya!", "isrc": "USAR10301129", "filePath": "/Volumes/Music/Hip-Hop/Outkast - Hey Ya.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/2PpruBYCo4H7WOBJ7Q2EwM", "tidalUrl": "https://tidal.com/browse/track/3992564", "promotedToLibrary": false },
-        { "id": "trk-0006", "artist": "Fleetwood Mac", "title": "Everywhere", "isrc": "USWB18717002", "filePath": "/Volumes/Music/Rock/Fleetwood Mac - Everywhere.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/4uVa0s9ZJF5Uk0NbrtfQQB", "tidalUrl": "https://tidal.com/browse/track/16860547", "promotedToLibrary": false },
-        { "id": "trk-0007", "artist": "ABBA", "title": "Dancing Queen", "isrc": "SEAYA7600001", "filePath": "/Volumes/Music/Pop/ABBA - Dancing Queen.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/0GjEhVFGZW8afUYGChu3Rr", "tidalUrl": "https://tidal.com/browse/track/35038163", "promotedToLibrary": true },
-        { "id": "trk-0008", "artist": "Chic", "title": "Good Times", "isrc": "USAT27900012", "filePath": "/Volumes/Music/Disco/Chic - Good Times.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/3a47qYPmA6BD9IM4FTNCun", "tidalUrl": "https://tidal.com/browse/track/6948719", "promotedToLibrary": false },
-        { "id": "trk-0009", "artist": "Whitney Houston", "title": "I Wanna Dance with Somebody", "isrc": "USAR18700084", "filePath": "/Volumes/Music/Pop/Whitney Houston - I Wanna Dance.m4a", "matchKind": "fuzzy", "spotifyUrl": "https://open.spotify.com/track/2tUBqZG2AbRi7Q0BIrVrEj", "tidalUrl": "https://tidal.com/browse/track/2391537", "promotedToLibrary": true },
-        { "id": "trk-0010", "artist": "Prince", "title": "Kiss", "isrc": "USWB10500201", "filePath": "/Volumes/Music/Funk/Prince - Kiss.flac", "matchKind": "isrc", "spotifyUrl": "https://open.spotify.com/track/4ucKtCqEoYUVbI3LFXjmfP", "tidalUrl": "https://tidal.com/browse/track/77648014", "promotedToLibrary": false }
+        { "id": "trk-0001", "artist": "Stevie Wonder", "title": "Sir Duke", "isrc": "USMO16800027", "filePath": "/Volumes/Music/Library/Funk/Stevie Wonder - Sir Duke.flac", "matchKind": "isrc", "source": "library", "spotifyUrl": "https://open.spotify.com/track/2WfaOiMkCvy7F5fcp2zZ8L", "tidalUrl": "https://tidal.com/browse/track/77640617", "isPromoted": true, "libraryFilePresence": "present", "libraryPath": "/Volumes/Music/Library/Funk/Stevie Wonder - Sir Duke.flac", "canPromote": true },
+        { "id": "trk-0002", "artist": "Earth, Wind & Fire", "title": "September", "isrc": "USCO27800007", "filePath": "/Volumes/Music/Library/Disco/Earth, Wind & Fire - September.flac", "matchKind": "isrc", "source": "library", "spotifyUrl": "https://open.spotify.com/track/3kxfsdsCpFgN412fpnW85Y", "tidalUrl": "https://tidal.com/browse/track/8551291", "isPromoted": true, "libraryFilePresence": "present", "libraryPath": "/Volumes/Music/Library/Disco/Earth, Wind & Fire - September.flac", "canPromote": true },
+        { "id": "trk-0003", "artist": "Daft Punk", "title": "Get Lucky", "isrc": "GBDUW1300026", "filePath": "/Volumes/Music/NAS/House/Daft Punk - Get Lucky.flac", "matchKind": "isrc", "source": "library", "spotifyUrl": "https://open.spotify.com/track/2Foc5Q5nqNiosCNqttzHof", "tidalUrl": "https://tidal.com/browse/track/22630510", "isPromoted": true, "libraryFilePresence": "missing", "libraryPath": "/Volumes/Music/Library/House/Daft Punk - Get Lucky.flac", "canPromote": true },
+        { "id": "trk-0004", "artist": "Beyonc\u00e9", "title": "Crazy in Love", "isrc": "USSM10309027", "filePath": "/Volumes/Music/Library/Pop/Beyonce - Crazy in Love.m4a", "matchKind": "exact", "source": "library", "spotifyUrl": "https://open.spotify.com/track/5IVuqXILoxVWvWEPm82Jxr", "tidalUrl": "https://tidal.com/browse/track/24037421", "isPromoted": true, "libraryFilePresence": "present", "libraryPath": "/Volumes/Music/Library/Pop/Beyonce - Crazy in Love.m4a", "canPromote": true },
+        { "id": "trk-0005", "artist": "Outkast", "title": "Hey Ya!", "isrc": "USAR10301129", "filePath": "/Volumes/Music/NAS/Hip-Hop/Outkast - Hey Ya.flac", "matchKind": "isrc", "source": "nas", "spotifyUrl": "https://open.spotify.com/track/2PpruBYCo4H7WOBJ7Q2EwM", "tidalUrl": "https://tidal.com/browse/track/3992564", "isPromoted": false, "libraryFilePresence": "n/a", "canPromote": true },
+        { "id": "trk-0006", "artist": "Fleetwood Mac", "title": "Everywhere", "isrc": "USWB18717002", "filePath": "/Volumes/Music/Library/Rock/Fleetwood Mac - Everywhere.flac", "matchKind": "isrc", "source": "library", "spotifyUrl": "https://open.spotify.com/track/4uVa0s9ZJF5Uk0NbrtfQQB", "tidalUrl": "https://tidal.com/browse/track/16860547", "isPromoted": true, "libraryFilePresence": "present", "libraryPath": "/Volumes/Music/Library/Rock/Fleetwood Mac - Everywhere.flac", "canPromote": true },
+        { "id": "trk-0007", "artist": "ABBA", "title": "Dancing Queen", "isrc": "SEAYA7600001", "filePath": "/Volumes/Music/NAS/Pop/ABBA - Dancing Queen.flac", "matchKind": "isrc", "source": "library", "spotifyUrl": "https://open.spotify.com/track/0GjEhVFGZW8afUYGChu3Rr", "tidalUrl": "https://tidal.com/browse/track/35038163", "isPromoted": true, "libraryFilePresence": "missing", "libraryPath": "/Volumes/Music/Library/Pop/ABBA - Dancing Queen.flac", "canPromote": true },
+        { "id": "trk-0008", "artist": "Chic", "title": "Good Times", "isrc": "USAT27900012", "filePath": "/Volumes/Music/NAS/Disco/Chic - Good Times.flac", "matchKind": "isrc", "source": "nas", "spotifyUrl": "https://open.spotify.com/track/3a47qYPmA6BD9IM4FTNCun", "tidalUrl": "https://tidal.com/browse/track/6948719", "isPromoted": false, "libraryFilePresence": "n/a", "canPromote": true },
+        { "id": "trk-0009", "artist": "Whitney Houston", "title": "I Wanna Dance with Somebody", "isrc": "USAR18700084", "filePath": "/Volumes/Music/Library/Pop/Whitney Houston - I Wanna Dance.m4a", "matchKind": "fuzzy", "source": "library", "spotifyUrl": "https://open.spotify.com/track/2tUBqZG2AbRi7Q0BIrVrEj", "tidalUrl": "https://tidal.com/browse/track/2391537", "isPromoted": true, "libraryFilePresence": "present", "libraryPath": "/Volumes/Music/Library/Pop/Whitney Houston - I Wanna Dance.m4a", "canPromote": true },
+        { "id": "trk-0010", "artist": "Prince", "title": "Kiss", "isrc": "USWB10500201", "filePath": "/Volumes/Music/NAS/Funk/Prince - Kiss.flac", "matchKind": "isrc", "source": "nas", "spotifyUrl": "https://open.spotify.com/track/4ucKtCqEoYUVbI3LFXjmfP", "tidalUrl": "https://tidal.com/browse/track/77648014", "isPromoted": false, "libraryFilePresence": "n/a", "canPromote": false }
       ],
       "misses": [
         { "id": "trk-0119", "artist": "Sault", "title": "Free", "isrc": "QZES72093041", "spotifyUrl": "https://open.spotify.com/track/3i6Vj5g4omr9crBblEnEPv", "tidalPurchaseUrl": "https://tidal.com/browse/track/q-search?q=Sault+Free" },
@@ -303,24 +299,6 @@
       "estimatedUsd": 1.42,
       "promptCachingEnabled": true,
       "estimatedAt": "2026-04-24T13:25:00Z"
-    },
-    "syncResults": {
-      "spotify": {
-        "service": "spotify",
-        "status": "not-run",
-        "lastSyncedAt": null,
-        "playlistUrl": null,
-        "isrcMatched": null,
-        "isrcMissed": null
-      },
-      "tidal": {
-        "service": "tidal",
-        "status": "not-run",
-        "lastSyncedAt": null,
-        "playlistUrl": null,
-        "isrcMatched": null,
-        "isrcMissed": null
-      }
     },
     "jobLogLines": [
       { "ts": "2026-04-24T13:30:00Z", "level": "info", "message": "Job analyze-mood started for evt-01 (124 units)" },

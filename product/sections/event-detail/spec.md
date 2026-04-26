@@ -2,7 +2,7 @@
 
 ## Overview
 
-The core working surface of Cratekeeper. A two-pane master-detail layout: a compact left rail listing all 12 pipeline steps grouped into phases, and a focused right panel that swaps to show the active step's controls, status, and live output. Above both panes sits an event header with the event identity, top-level health banners, and quick track-count stats. This is where the operator actually moves a wedding playlist from "fetched" to "synced."
+The core working surface of Cratekeeper. A two-pane master-detail layout: a compact left rail listing all 11 pipeline steps grouped into phases, and a focused right panel that swaps to show the active step's controls, status, and live output. Above both panes sits an event header with the event identity, top-level health banners, and quick track-count stats. This is where the operator actually moves a wedding playlist from "fetched" to a fully tagged event folder on disk.
 
 ## User Flows
 
@@ -10,7 +10,7 @@ The core working surface of Cratekeeper. A two-pane master-detail layout: a comp
 - Operator clicks `Run` on the active step to kick off a job; the panel switches to a live view with progress bar, per-unit metrics, and a streaming log; they can `Pause` or `Cancel` mid-flight.
 - Operator returns to a step that previously failed, sees the error and last checkpoint, and clicks `Resume` to continue from the last unprocessed unit without redoing completed work.
 - On the Review step, operator filters tracks by low classification confidence and bulk re-buckets a selection into a different genre with a single action.
-- On Match, operator scans the misses list and copies the auto-generated Tidal purchase URLs to a clipboard.
+- On Match, operator scans the misses list and copies the auto-generated Tidal listen / purchase URLs to a clipboard so they can acquire the missing tracks.
 - On Classify Tags, operator opens a pre-flight cost estimate panel showing token counts and dollar estimate before dispatching to Anthropic; live token usage updates during the run.
 - On Apply Tags, Build Event, and Build Library, operator runs a Dry-run first to inspect a diff of files-to-be-changed; only then runs for real.
 - When a destructive step is blocked by quality-gate failures, a banner appears at the top of the page; operator opens the Quality Checks panel, reads the failures, types the confirmation phrase to override, and the override is logged to the audit trail.
@@ -23,19 +23,20 @@ The core working surface of Cratekeeper. A two-pane master-detail layout: a comp
 ### Page header
 - Sticky header (below the global top bar) showing the event name (large, Inter 600), event date (caption), and slug in JetBrains Mono.
 - Spotify playlist URL as an external-link chip on the right.
-- Below the title row, a compact stats strip: `Total / Matched / Tagged / Synced` in JetBrains Mono with subtle dividers, mirroring the Dashboard card layout.
-- Banners (stacked when both apply, dismissible only when resolved):
+- Below the title row, a compact stats strip: `Total / Matched / From Library / Tagged` in JetBrains Mono with subtle dividers, mirroring the Dashboard card layout. The **From Library** tile shows the count of matched tracks resolved to a Master Library file (vs NAS-only matches); a small library glyph precedes the number.
+- Banners (stacked when multiple apply, dismissible only when resolved):
   - **Quality gate banner** — red, surfaces the count of failing checks and a `Review checks` action that opens the Quality Checks side sheet. Required state for any destructive step.
   - **Stale build banner** — amber, lists which builds are stale (event folder, master library) with a `Rebuild` action that jumps to the relevant step.
+  - **Missing masterpieces banner** — red, appears when any matched track in this event resolves to a Master Library entry whose file is currently missing on disk. Shows count + a `Show in Match` action that filters the Match panel to those rows. Operator must address (re-locate, drop entry, or override) before destructive Build steps.
 
 ### Left step rail (260px, sticky)
-- Vertical list of all 12 steps, numbered, grouped into 6 phases with thin section headers:
+- Vertical list of all 11 steps, numbered, grouped into 6 phases with thin section headers:
   - Intake (Fetch, Enrich)
   - Classify (Classify, Review)
   - Library (Scan, Match)
   - Analysis (Analyze Mood, Classify Tags)
   - Tagging (Apply Tags)
-  - Build & Sync (Build Event, Build Library, Sync)
+  - Build (Build Event, Build Library)
 - Each row: step number (mono, neutral-500), step label, and a small status icon on the right:
   - Idle: empty circle (neutral)
   - Running: spinning sky loader
@@ -56,15 +57,18 @@ The right panel swaps wholesale to a focused view per step. All step panels shar
 - **Fetch / Enrich / Scan:** simple Run button + last-result summary (track count, source URL, MusicBrainz lookups).
 - **Classify:** distribution chart of tracks per genre bucket with counts.
 - **Review:** filterable table of low-confidence tracks (confidence < threshold) with checkbox selection and a "Re-bucket selected → [bucket dropdown]" bulk action.
-- **Match:** a "Matched" tab (table of resolved local files with ISRC source) and a "Misses" tab (table with one-click copy of generated Tidal purchase URLs). Each matched row has a leading **promote-to-library star** — operators star tracks they want to keep as permanent masterpieces in the curated Master Library. Filled gold star = already promoted; outline star = not yet. Toggling fires `onPromoteToLibrary(trackId, next)`. The star never deletes the file; it only adds/removes the track from the curated collection.
+- **Match:** a "Matched" tab (table of resolved local files with ISRC source) and a "Misses" tab (table with one-click copy of generated Tidal listen / purchase URLs so the operator can acquire missing tracks).
+  - Each matched row shows a small **source pill** indicating where the file resolved: a sky `library` pill for Master Library hits, or a neutral `NAS` pill for NAS Library hits. When the same ISRC exists in both pools, Match always prefers the Master Library file and shows the `library` pill.
+  - Each matched row has a leading **promote-to-library star** — operators star tracks they want to keep as permanent masterpieces in the curated Master Library. Filled gold star = already promoted; outline star = not yet. Toggling fires `onPromoteToLibrary(trackId, next)`. The star never deletes the file; it only adds/removes the track from the curated collection.
+    - The promote-star is **disabled with a tooltip** when the source file is not present on disk — promotion requires a real file. (For event flows this is normally unreachable because Build Event ensures all matched tracks are on disk.)
+    - **Broken masterpiece state:** when a previously-promoted track's Master Library file has since gone missing, the star renders filled-gold with a small red warning glyph overlaid (broken-link mini icon). The row also surfaces in the Missing Masterpieces banner above. Hovering the star shows the missing path and a `Repair in Library` link that deep-jumps to that entry in Master Library.
 - **Analyze Mood:** per-track checkpoint table; running rows pulse; failed rows show a re-try affordance.
 - **Classify Tags:** pre-flight cost panel showing estimated input/output tokens and dollar estimate (using current Anthropic pricing from settings); live token usage tile during the run; `Run estimate` and `Dispatch` are two separate actions.
 - **Apply Tags:** `Dry-run` and `Apply` actions side by side; dry-run shows a per-file diff of tag changes. After a real Apply, an `Undo` button appears with a confirmation modal.
 - **Build Event / Build Library:** `Dry-run` and `Build` actions; dry-run shows the file diff (additions / removals / unchanged) grouped by genre folder.
-- **Sync:** Spotify and Tidal as side-by-side cards; each shows last sync result, ISRC match counts, and the resulting playlist URL when available.
 
 ### Cross-cutting requirements
-- All destructive actions (`Apply`, `Build`, `Sync`, `Undo`) require the quality gate to be clear or an active override; the override modal is a typed-confirmation phrase that writes to the audit log.
+- All destructive actions (`Apply`, `Build`, `Undo`) require the quality gate to be clear or an active override; the override modal is a typed-confirmation phrase that writes to the audit log.
 - Live SSE log lines render in JetBrains Mono with subdued timestamp prefixes; auto-scroll with a "scroll to bottom" pill when the user has scrolled away.
 - Status colors are consistent: sky for in-progress, emerald for healthy/done, amber for stale/warning, red for failed.
 - Each panel is self-contained and full-height; no horizontal scrolling.

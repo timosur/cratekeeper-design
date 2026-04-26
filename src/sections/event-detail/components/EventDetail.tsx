@@ -25,6 +25,8 @@ import {
   CheckCheck,
   CircleDashed,
   Star,
+  Library,
+  Wrench,
 } from "lucide-react";
 import type {
   EventDetailProps,
@@ -39,7 +41,6 @@ import type {
   MissedTrack,
   MoodAnalysisRow,
   TagCostEstimate,
-  SyncResult,
   JobLogLine,
   GenreDistributionEntry,
   ActivityEntry,
@@ -71,9 +72,9 @@ export function EventDetail({
   onOpenTidal,
   onExportMissesTidalUrls,
   onPromoteToLibrary,
-  onOpenSyncedPlaylist,
   onViewAllActivity,
-}: EventDetailProps) {
+  onRepairInLibrary,
+}: EventDetailProps & { onRepairInLibrary?: (track: MatchedTrack) => void }) {
   const [selectedStepId, setSelectedStepId] = useState<StepId>(event.activeStepId);
   const activeStep =
     event.steps.find((s) => s.id === selectedStepId) ?? event.steps[0];
@@ -88,7 +89,11 @@ export function EventDetail({
       className="mx-auto flex w-full max-w-[1600px] flex-col gap-5"
       style={{ fontFamily: "Inter, system-ui, sans-serif" }}
     >
-      <EventHeader event={event} onOpenQualityChecks={onOpenQualityChecks} />
+      <EventHeader
+        event={event}
+        onOpenQualityChecks={onOpenQualityChecks}
+        onShowMissingMasterpieces={() => handleSelectStep("match")}
+      />
 
       <div className="flex gap-5">
         <StepRail
@@ -117,7 +122,7 @@ export function EventDetail({
             onOpenTidal={onOpenTidal}
             onExportMissesTidalUrls={onExportMissesTidalUrls}
             onPromoteToLibrary={onPromoteToLibrary}
-            onOpenSyncedPlaylist={onOpenSyncedPlaylist}
+            onRepairInLibrary={onRepairInLibrary}
           />
 
           <RecentActivity
@@ -137,9 +142,11 @@ export function EventDetail({
 function EventHeader({
   event,
   onOpenQualityChecks,
+  onShowMissingMasterpieces,
 }: {
   event: EventDetailData;
   onOpenQualityChecks?: () => void;
+  onShowMissingMasterpieces?: () => void;
 }) {
   return (
     <header className="flex flex-col gap-4 border-b border-neutral-200 pb-5 dark:border-neutral-800">
@@ -178,8 +185,13 @@ function EventHeader({
               : "neutral"
           }
         />
+        <StatCell
+          label="From Library"
+          value={event.trackCounts.fromLibrary}
+          icon={<Library className="h-3 w-3" strokeWidth={2.25} />}
+          accent="sky"
+        />
         <StatCell label="Tagged" value={event.trackCounts.tagged} />
-        <StatCell label="Synced" value={event.trackCounts.synced} />
       </div>
 
       {/* Banners */}
@@ -201,6 +213,15 @@ function EventHeader({
           action={{ label: "Review checks", onClick: onOpenQualityChecks }}
         />
       )}
+      {event.missingMasterpieces.count > 0 && (
+        <Banner
+          tone="red"
+          icon={<AlertCircle className="h-4 w-4" strokeWidth={2} />}
+          title={`${event.missingMasterpieces.count} masterpiece${event.missingMasterpieces.count === 1 ? "" : "s"} missing on disk`}
+          description={"Promoted Master Library files are gone. Repair them in the Library before destructive Build steps."}
+          action={{ label: "Show in Match", onClick: onShowMissingMasterpieces }}
+        />
+      )}
       {event.staleBuilds.length > 0 && (
         <Banner
           tone="amber"
@@ -218,20 +239,25 @@ function StatCell({
   label,
   value,
   accent = "neutral",
+  icon,
 }: {
   label: string;
   value: number;
-  accent?: "neutral" | "emerald" | "amber";
+  accent?: "neutral" | "emerald" | "amber" | "sky";
+  icon?: React.ReactNode;
 }) {
   const valueColor =
     accent === "emerald"
       ? "text-emerald-700 dark:text-emerald-400"
       : accent === "amber"
         ? "text-amber-700 dark:text-amber-400"
-        : "text-neutral-900 dark:text-neutral-100";
+        : accent === "sky"
+          ? "text-sky-700 dark:text-sky-400"
+          : "text-neutral-900 dark:text-neutral-100";
   return (
     <div className="px-4 py-3">
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
+        {icon ? <span className={accent === "sky" ? "text-sky-500/70" : ""}>{icon}</span> : null}
         {label}
       </div>
       <div className={`mt-0.5 text-lg font-semibold ${valueColor}`} style={mono}>
@@ -292,7 +318,7 @@ const PHASE_ORDER: StepPhase[] = [
   "Library",
   "Analysis",
   "Tagging",
-  "Build & Sync",
+  "Build",
 ];
 
 function StepRail({
@@ -443,13 +469,13 @@ interface StepPanelProps {
   onOpenTidal?: (url: string) => void;
   onExportMissesTidalUrls?: (urls: string[]) => void;
   onPromoteToLibrary?: (trackId: string, next: boolean) => void;
-  onOpenSyncedPlaylist?: (service: "spotify" | "tidal", url: string) => void;
+  onRepairInLibrary?: (track: MatchedTrack) => void;
 }
 
 function StepPanel(props: StepPanelProps) {
   const { event, step, details } = props;
   const isDestructive =
-    step.id === "apply-tags" || step.id === "build-event" || step.id === "build-library" || step.id === "sync";
+    step.id === "apply-tags" || step.id === "build-event" || step.id === "build-library";
   const gateBlocking = isDestructive && event.qualityGate.failingCount > 0;
 
   return (
@@ -458,7 +484,7 @@ function StepPanel(props: StepPanelProps) {
       <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-6 py-5 dark:border-neutral-800">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
-            <span style={mono}>step {step.index} / 12</span>
+            <span style={mono}>step {step.index} / 11</span>
             <span className="text-neutral-300 dark:text-neutral-700">{"\u2022"}</span>
             <span>{step.phase}</span>
           </div>
@@ -657,6 +683,7 @@ function renderStepBody(
           onOpenTidal={props.onOpenTidal}
           onExportMissesTidalUrls={props.onExportMissesTidalUrls}
           onPromoteToLibrary={props.onPromoteToLibrary}
+          onRepairInLibrary={props.onRepairInLibrary}
         />
       );
     case "analyze-mood":
@@ -667,14 +694,6 @@ function renderStepBody(
     case "build-event":
     case "build-library":
       return <BuildLikeBody step={step} />;
-    case "sync":
-      return (
-        <SyncBody
-          spotify={details.syncResults.spotify}
-          tidal={details.syncResults.tidal}
-          onOpen={props.onOpenSyncedPlaylist}
-        />
-      );
     default:
       return <div className="text-sm text-neutral-500">No content for this step.</div>;
   }
@@ -832,6 +851,7 @@ function MatchBody({
   onOpenTidal,
   onExportMissesTidalUrls,
   onPromoteToLibrary,
+  onRepairInLibrary,
 }: {
   matched: MatchedTrack[];
   misses: MissedTrack[];
@@ -841,11 +861,15 @@ function MatchBody({
   onOpenTidal?: (url: string) => void;
   onExportMissesTidalUrls?: (urls: string[]) => void;
   onPromoteToLibrary?: (trackId: string, next: boolean) => void;
+  onRepairInLibrary?: (track: MatchedTrack) => void;
 }) {
   const [tab, setTab] = useState<"matched" | "misses">("matched");
   const total = matched.length + misses.length;
   const coverage = total ? Math.round((matched.length / total) * 100) : 0;
-  const promotedCount = matched.filter((m) => m.promotedToLibrary).length;
+  const promotedCount = matched.filter((m) => m.isPromoted).length;
+  const brokenCount = matched.filter(
+    (m) => m.isPromoted && m.libraryFilePresence === "missing",
+  ).length;
 
   return (
     <div>
@@ -880,6 +904,20 @@ function MatchBody({
             <span className="text-neutral-600 dark:text-neutral-400">promoted to library</span>
           </span>
         </div>
+        {brokenCount > 0 && (
+          <>
+            <span className="text-neutral-300 dark:text-neutral-700">{"\u2022"}</span>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-500" strokeWidth={2.25} />
+              <span className="text-sm">
+                <span className="font-semibold text-red-700 dark:text-red-400" style={mono}>
+                  {brokenCount}
+                </span>{" "}
+                <span className="text-red-600 dark:text-red-400">broken masterpiece{brokenCount === 1 ? "" : "s"}</span>
+              </span>
+            </div>
+          </>
+        )}
         <div className="ml-auto flex items-center gap-3">
           <span className="text-xs text-neutral-500 dark:text-neutral-500" style={mono}>
             {coverage}% coverage
@@ -924,6 +962,7 @@ function MatchBody({
               <tr>
                 <th className="w-10 px-2 py-2 text-center" title="Promote to Master Library">{"\u2605"}</th>
                 <th className="w-24 px-3 py-2">Library</th>
+                <th className="w-20 px-3 py-2">Source</th>
                 <th className="px-3 py-2">{"Artist \u2014 Title"}</th>
                 <th className="px-3 py-2">ISRC</th>
                 <th className="px-3 py-2">Local file</th>
@@ -932,38 +971,72 @@ function MatchBody({
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {matched.map((m) => (
-                <tr key={m.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40">
+              {matched.map((m) => {
+                const broken = m.isPromoted && m.libraryFilePresence === "missing";
+                const promoteDisabled = !m.canPromote && !m.isPromoted;
+                const starTitle = broken
+                  ? "Library file is missing \u2014 Repair in Library"
+                  : m.isPromoted
+                    ? "Remove from Master Library (file is preserved)"
+                    : promoteDisabled
+                      ? "Source file is not on disk \u2014 cannot promote"
+                      : "Promote to Master Library";
+                return (
+                <tr
+                  key={m.id}
+                  className={
+                    broken
+                      ? "bg-red-50/40 hover:bg-red-50/60 dark:bg-red-950/10 dark:hover:bg-red-950/20"
+                      : "hover:bg-neutral-50 dark:hover:bg-neutral-800/40"
+                  }
+                >
                   <td className="px-2 py-2 text-center">
                     <button
                       type="button"
-                      onClick={() => onPromoteToLibrary?.(m.id, !m.promotedToLibrary)}
-                      title={
-                        m.promotedToLibrary
-                          ? "Remove from Master Library (file is preserved)"
-                          : "Promote to Master Library"
-                      }
-                      aria-label={
-                        m.promotedToLibrary ? "Remove from Master Library" : "Promote to Master Library"
-                      }
+                      disabled={promoteDisabled}
+                      onClick={() => {
+                        if (broken) {
+                          onRepairInLibrary?.(m);
+                          return;
+                        }
+                        if (promoteDisabled) return;
+                        onPromoteToLibrary?.(m.id, !m.isPromoted);
+                      }}
+                      title={starTitle}
+                      aria-label={starTitle}
                       className={
-                        m.promotedToLibrary
-                          ? "inline-flex h-7 w-7 items-center justify-center rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                          : "inline-flex h-7 w-7 items-center justify-center rounded text-neutral-300 hover:bg-amber-50 hover:text-amber-500 dark:text-neutral-700 dark:hover:bg-amber-950/30 dark:hover:text-amber-400"
+                        broken
+                          ? "relative inline-flex h-7 w-7 items-center justify-center rounded text-amber-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          : m.isPromoted
+                            ? "inline-flex h-7 w-7 items-center justify-center rounded text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            : promoteDisabled
+                              ? "inline-flex h-7 w-7 items-center justify-center rounded text-neutral-200 dark:text-neutral-800 cursor-not-allowed"
+                              : "inline-flex h-7 w-7 items-center justify-center rounded text-neutral-300 hover:bg-amber-50 hover:text-amber-500 dark:text-neutral-700 dark:hover:bg-amber-950/30 dark:hover:text-amber-400"
                       }
                     >
                       <Star
                         className={
-                          m.promotedToLibrary
+                          m.isPromoted
                             ? "h-4 w-4 fill-current"
                             : "h-4 w-4"
                         }
                         strokeWidth={2}
                       />
+                      {broken && (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-white ring-1 ring-white dark:ring-neutral-900"
+                          aria-hidden="true"
+                        >
+                          <AlertCircle className="h-2.5 w-2.5" strokeWidth={3} />
+                        </span>
+                      )}
                     </button>
                   </td>
                   <td className="px-3 py-2">
                     <LibraryBadge present />
+                  </td>
+                  <td className="px-3 py-2">
+                    <SourcePill source={m.source} />
                   </td>
                   <td className="px-3 py-2 text-neutral-900 dark:text-neutral-100">
                     <span className="font-medium">{m.artist}</span>
@@ -988,6 +1061,17 @@ function MatchBody({
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
+                      {broken && (
+                        <button
+                          type="button"
+                          onClick={() => onRepairInLibrary?.(m)}
+                          title="Repair in Master Library"
+                          className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
+                        >
+                          <Wrench className="h-3 w-3" strokeWidth={2.25} />
+                          Repair
+                        </button>
+                      )}
                       <JumpButton
                         label="Reveal in file manager"
                         icon={<Folder className="h-3.5 w-3.5" strokeWidth={2} />}
@@ -1008,7 +1092,8 @@ function MatchBody({
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1074,6 +1159,28 @@ function MatchBody({
   );
 }
 
+function SourcePill({ source }: { source: MatchedTrack["source"] }) {
+  if (source === "library") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
+        title="Resolved from the curated Master Library on local disk"
+      >
+        <Library className="h-3 w-3" strokeWidth={2.5} />
+        Library
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
+      title="Resolved from the broader NAS Library scan"
+    >
+      NAS
+    </span>
+  );
+}
+
 function LibraryBadge({ present }: { present: boolean }) {
   if (present) {
     return (
@@ -1082,8 +1189,7 @@ function LibraryBadge({ present }: { present: boolean }) {
         Local
       </span>
     );
-  }
-  return (
+  }  return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
       <CircleDashed className="h-3 w-3" strokeWidth={2.5} />
       Missing
@@ -1281,79 +1387,6 @@ function BuildLikeBody({ step }: { step: PipelineStep }) {
         </span>{" "}
         to preview the file diff before committing. All file operations are scoped to configured filesystem roots.
       </p>
-    </div>
-  );
-}
-
-function SyncBody({
-  spotify,
-  tidal,
-  onOpen,
-}: {
-  spotify: SyncResult;
-  tidal: SyncResult;
-  onOpen?: (service: "spotify" | "tidal", url: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <SyncCard service="spotify" result={spotify} onOpen={onOpen} />
-      <SyncCard service="tidal" result={tidal} onOpen={onOpen} />
-    </div>
-  );
-}
-
-function SyncCard({
-  service,
-  result,
-  onOpen,
-}: {
-  service: "spotify" | "tidal";
-  result: SyncResult;
-  onOpen?: (service: "spotify" | "tidal", url: string) => void;
-}) {
-  const label = service === "spotify" ? "Spotify" : "Tidal";
-  return (
-    <div className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{label}</div>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-            result.status === "succeeded"
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-              : result.status === "failed"
-                ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
-                : result.status === "running"
-                  ? "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-                  : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-          }`}
-        >
-          {result.status === "not-run" ? "Not run" : result.status}
-        </span>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-neutral-500">Last synced</div>
-          <div className="mt-0.5 text-neutral-700 dark:text-neutral-300" style={mono}>
-            {result.lastSyncedAt ? formatRelative(result.lastSyncedAt) : "\u2014"}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-neutral-500">ISRC matched</div>
-          <div className="mt-0.5 text-neutral-700 dark:text-neutral-300" style={mono}>
-            {result.isrcMatched != null ? `${result.isrcMatched} / ${(result.isrcMatched ?? 0) + (result.isrcMissed ?? 0)}` : "\u2014"}
-          </div>
-        </div>
-      </div>
-      {result.playlistUrl ? (
-        <button
-          type="button"
-          onClick={() => onOpen?.(service, result.playlistUrl!)}
-          className="mt-3 inline-flex items-center gap-1 text-xs text-sky-700 hover:underline dark:text-sky-400"
-        >
-          Open playlist
-          <ExternalLink className="h-3 w-3" />
-        </button>
-      ) : null}
     </div>
   );
 }

@@ -26,8 +26,12 @@ export default function MasterLibraryPreview() {
         )
       }
       onPromoteFromEvent={() => console.log("promote from event")}
+      onVerifyLibrary={() => console.log("verify library: scan all tracks on disk")}
       onRemoveFromLibrary={(t) =>
         console.log("remove from library:", t.title, "by", t.artist)
+      }
+      onDropMissingEntry={(t) =>
+        console.log("drop missing entry:", t.title, "by", t.artist)
       }
     />
   );

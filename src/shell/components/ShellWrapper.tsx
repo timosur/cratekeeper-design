@@ -10,15 +10,9 @@ export default function ShellWrapper({ children }: { children?: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const navigationItems: NavigationItem[] = [
-    { label: "Dashboard", href: "/", icon: "dashboard", isActive: activeHref === "/" },
-    {
-      label: "Event Detail",
-      href: "/events/sarah-mike-wedding",
-      icon: "event",
-      isActive: activeHref.startsWith("/events"),
-    },
-    { label: "Settings", href: "/settings", icon: "settings", isActive: activeHref === "/settings" },
+    { label: "Events", href: "/", icon: "event", isActive: activeHref === "/" },
     { label: "Master Library", href: "/library", icon: "library", isActive: activeHref === "/library" },
+    { label: "Settings", href: "/settings", icon: "settings", isActive: activeHref === "/settings" },
     { label: "Audit Log", href: "/audit", icon: "audit", isActive: activeHref === "/audit" },
   ];
 
